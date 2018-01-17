@@ -20,10 +20,12 @@ static const CGFloat __durationTime = 0.7;
     NSTimeInterval _endTime;
     
     CGFloat _velocity;
-    NSTimer *_timer;
+    CADisplayLink *_displaylink;
     
     NSUInteger _refreshCounter;
     NSUInteger _totalRefreshCount;
+    
+    NSMutableDictionary *_userInfo;
 }
 @end
 
@@ -40,11 +42,11 @@ static const CGFloat __durationTime = 0.7;
     return self;
 }
 
-- (void)refresh:(NSTimer *)timer
+- (void)refresh:(CADisplayLink *)linker
 {
     if (_refreshCounter == _totalRefreshCount) {
-        [timer invalidate];
-        _timer = nil;
+        [_displaylink invalidate];
+        _displaylink = nil;
         self.userInteractionEnabled = YES;
         [self slideToArcCenter];
         return;
@@ -55,8 +57,9 @@ static const CGFloat __durationTime = 0.7;
 #pragma mark - draw
 - (void)drawRect:(CGRect)rect
 {
-    if (!_timer) {
-        _timer = [NSTimer scheduledTimerWithTimeInterval:__timeRefresh target:self selector:@selector(refresh:) userInfo:nil repeats:YES];
+    if (!_displaylink) {
+        _displaylink = [CADisplayLink displayLinkWithTarget:self selector:@selector(refresh:)];
+        [_displaylink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSRunLoopCommonModes];
     }
     
     _refreshCounter++;
@@ -146,7 +149,7 @@ static const CGFloat __durationTime = 0.7;
 #pragma mark - touches
 - (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event
 {
-    [_timer invalidate];
+    [_displaylink invalidate];
     _lastPreTime = [[NSDate date] timeIntervalSince1970];
 }
 
@@ -177,30 +180,31 @@ static const CGFloat __durationTime = 0.7;
         return;
     }
     
-    NSMutableDictionary *userinfo = @{@"v":@(_velocity),@"clockwise":@(_velocity>0?YES:NO)}.mutableCopy;
-    _timer = [NSTimer scheduledTimerWithTimeInterval:__timeRefresh target:self selector:@selector(step:) userInfo:userinfo repeats:YES];
+    _userInfo = @{@"v":@(_velocity),@"clockwise":@(_velocity>0?YES:NO)}.mutableCopy;
+    _displaylink = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)];
+    [_displaylink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSRunLoopCommonModes];
 }
 - (void)touchesCancelled:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event
 {}
 
-- (void)step:(NSTimer *)timer
+- (void)step:(CADisplayLink *)linker
 {
-    CGFloat cvelocity = [timer.userInfo[@"v"] floatValue];
-    bool clockwise = [timer.userInfo[@"clockwise"] boolValue];
+    CGFloat cvelocity = [_userInfo[@"v"] floatValue];
+    bool clockwise = [_userInfo[@"clockwise"] boolValue];
     CGFloat s = cvelocity * 0.025;
     cvelocity = cvelocity -  _velocity * 0.04;
     
     if (clockwise && cvelocity < 0) {
-        [timer invalidate];
+        [linker invalidate];
         [self slideToArcCenter];
         return;
     }
     else if (!clockwise && cvelocity > 0){
-        [timer invalidate];
+        [linker invalidate];
         [self slideToArcCenter];
         return;
     }
-    [timer.userInfo setObject:@(cvelocity) forKey:@"v"];
+    [_userInfo setObject:@(cvelocity) forKey:@"v"];
     [self changeAngle:s];
 }
 
