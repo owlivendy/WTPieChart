@@ -180,6 +180,7 @@ static const CGFloat __durationTime = 0.7;
         return;
     }
     
+//    _velocity = MIN(_velocity, 2);
     _userInfo = @{@"v":@(_velocity),@"clockwise":@(_velocity>0?YES:NO)}.mutableCopy;
     _displaylink = [CADisplayLink displayLinkWithTarget:self selector:@selector(step:)];
     [_displaylink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSRunLoopCommonModes];
@@ -229,8 +230,10 @@ static const CGFloat __durationTime = 0.7;
     WTPieChartPiece *obj = self.pieces[_currIndex];
     CGFloat angle = (M_PI * 2 - obj.begin) - obj.delta/2;
     
-    [UIView animateWithDuration:0.3 animations:^{
+    [UIView animateWithDuration:0.5 delay:0 options:UIViewAnimationOptionCurveEaseIn animations:^{
         [self changeAngle:angle];
+    } completion:^(BOOL finished) {
+        
     }];
 }
 
